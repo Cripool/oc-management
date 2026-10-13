@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OC Management - Payout Calculator</title>
+  <style>
+    :root{
+      --bg:#0f1115;
+      --panel:#171a20;
+      --panel2:#1e232b;
+      --border:#313844;
+      --text:#f4f7fa;
+      --muted:#9ca8b7;
+      --accent:#69d6ad;
+      --accent2:#8eb7ff;
+      --danger:#ff8f8f;
+      --warning:#ffd479;
+      --success:#86e6a8;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#0d0f13,#12161c);
+      color:var(--text);
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      min-height:100vh;
+    }
+    .wrap{
+      width:min(1120px,calc(100% - 28px));
+      margin:0 auto;
+      padding:28px 0 60px;
+    }
+    header{
+      display:flex;
+      justify-content:space-between;
+      gap:18px;
+      align-items:flex-start;
+      margin-bottom:20px;
+    }
+    h1{margin:0;font-size:clamp(2rem,5vw,3rem);line-height:1}
+    h2{margin:0 0 6px;font-size:1.05rem}
+    p{margin:6px 0;color:var(--muted);line-height:1.45}
+    .eyebrow{
+      display:inline-block;
+      color:var(--accent);
+      font-size:.76rem;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      font-weight:800;
+      margin-bottom:10px;
+    }
+    .panel{
+      background:rgba(23,26,32,.94);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:18px;
+      margin:14px 0;
+      box-shadow:0 10px 30px rgba(0,0,0,.12);
+    }
+    .panel-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      margin-bottom:14px;
+    }
+    .btns{display:flex;gap:8px;flex-wrap:wrap}
+    button{
+      appearance:none;
+      min-height:42px;
+      border-radius:9px;
+      border:1px solid var(--border);
+      background:var(--panel2);
+      color:var(--text);
+      padding:9px 13px;
+      font:inherit;
+      font-weight:700;
+      cursor:pointer;
+    }
+    button.primary{
+      background:var(--accent);
+      color:#07110e;
+      border-color:transparent;
+    }
+    button:hover{filter:brightness(1.06)}
+    button:focus,input:focus{
+      outline:2px solid var(--accent2);
+      outline-offset:2px;
+    }
+    input{
+      width:100%;
+      min-height:44px;
+      border-radius:9px;
+      border:1px solid var(--border);
+      background:#10141a;
+      color:var(--text);
+      padding:9px 11px;
+      font:inherit;
+    }
+    label{
+      display:block;
+      color:var(--muted);
+      font-size:.78rem;
+      margin-bottom:5px;
+      font-weight:700;
+    }
+    .income-list{display:grid;gap:9px}
+    .income-row{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 220px auto;
+      gap:8px;
+      align-items:end;
+    }
+    .tier-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:12px;
+    }
+    .tier-card{
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:var(--panel2);
+      padding:14px;
+    }
+    .tier-card .pct{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px;
+      align-items:center;
+      margin-top:10px;
+    }
+    .status{
+      margin-top:12px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:11px 12px;
+      color:var(--muted);
+      background:#12161c;
+    }
+    .status.good{color:var(--success)}
+    .status.warn{color:var(--warning)}
+    .status.bad{color:var(--danger)}
+    .summary{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+      margin:14px 0;
+    }
+    .summary-card{
+      border:1px solid var(--border);
+      border-radius:14px;
+      background:var(--panel);
+      padding:16px;
+    }
+    .summary-card.primary{
+      border-color:rgba(105,214,173,.65);
+    }
+    .summary-card span{
+      color:var(--muted);
+      font-size:.8rem;
+      display:block;
+      margin-bottom:7px;
+    }
+    .summary-card strong{
+      font-size:clamp(1.15rem,3vw,1.55rem);
+      overflow-wrap:anywhere;
+    }
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:11px 8px;border-bottom:1px solid var(--border);text-align:left}
+    th{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+    td.money, th.money{text-align:right}
+    .saved{
+      min-height:20px;
+      margin-top:9px;
+      color:var(--muted);
+      font-size:.82rem;
+    }
+    .footer-note{
+      margin-top:10px;
+      font-size:.8rem;
+      color:var(--muted);
+    }
+    @media (max-width:820px){
+      .tier-grid,.summary{grid-template-columns:1fr}
+      .income-row{grid-template-columns:1fr}
+      header{display:block}
+      .header-actions{margin-top:12px}
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div>
+        <div class="eyebrow">OC Management</div>
+        <h1>Payout Calculator</h1>
+        <p>Add all income, set three editable payout groups, and the whole split is calculated instantly.</p>
+      </div>
+      <div class="header-actions btns">
+        <button type="button" id="copySummary">Copy summary</button>
+        <button type="button" id="resetAll">Reset</button>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Income</h2>
+          <p>Add as many income sources as you need for the current payout period.</p>
+        </div>
+        <div class="btns">
+          <button class="primary" type="button" id="addIncome">+ Add income</button>
+        </div>
+      </div>
+      <div id="incomeList" class="income-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Payout groups</h2>
+          <p>These default to Tier 1 &amp; 2, Tier 3 &amp; 4, and Tier 5 &amp; 6, but every label and percentage is editable.</p>
+        </div>
+        <div class="btns">
+          <button type="button" id="saveDefaults">Save current as defaults</button>
+        </div>
+      </div>
+
+      <div class="tier-grid">
+        <div class="tier-card">
+          <label for="tierName1">Group 1 name</label>
+          <input id="tierName1" value="Tier 1 & 2" />
+          <div class="pct">
+            <div>
+              <label for="tierPct1">Payment percentage</label>
+              <input id="tierPct1" type="number" min="0" max="100" step="0.01" placeholder="0" />
+            </div>
+            <strong>%</strong>
+          </div>
+        </div>
+
+        <div class="tier-card">
+          <label for="tierName2">Group 2 name</label>
+          <input id="tierName2" value="Tier 3 & 4" />
+          <div class="pct">
+            <div>
+              <label for="tierPct2">Payment percentage</label>
+              <input id="tierPct2" type="number" min="0" max="100" step="0.01" placeholder="0" />
+            </div>
+            <strong>%</strong>
+          </div>
+        </div>
+
+        <div class="tier-card">
+          <label for="tierName3">Group 3 name</label>
+          <input id="tierName3" value="Tier 5 & 6" />
+          <div class="pct">
+            <div>
+              <label for="tierPct3">Payment percentage</label>
+              <input id="tierPct3" type="number" min="0" max="100" step="0.01" placeholder="0" />
+            </div>
+            <strong>%</strong>
+          </div>
+        </div>
+      </div>
+
+      <div id="splitStatus" class="status" aria-live="polite"></div>
+      <div id="savedNotice" class="saved" aria-live="polite"></div>
+    </section>
+
+    <section class="summary">
+      <article class="summary-card primary">
+        <span>Total income</span>
+        <strong id="totalIncome">$0</strong>
+      </article>
+      <article class="summary-card">
+        <span id="summaryLabel1">Tier 1 &amp; 2</span>
+        <strong id="summaryValue1">$0</strong>
+      </article>
+      <article class="summary-card">
+        <span id="summaryLabel2">Tier 3 &amp; 4</span>
+        <strong id="summaryValue2">$0</strong>
+      </article>
+      <article class="summary-card">
+        <span id="summaryLabel3">Tier 5 &amp; 6</span>
+        <strong id="summaryValue3">$0</strong>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Calculated payout</h2>
+          <p>The values below update automatically as you type.</p>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Payout group</th>
+              <th>Rate</th>
+              <th class="money">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="breakdown"></tbody>
+        </table>
+      </div>
+
+      <div class="footer-note">
+        Saved defaults are kept in this browser only. No data leaves the page.
+      </div>
+    </section>
+  </main>
+
+<script>
+(() => {
+  const DEFAULTS_KEY = "oc_payout_defaults_v1";
+  const incomeList = document.getElementById("incomeList");
+  const savedNotice = document.getElementById("savedNotice");
+
+  const money = (value) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0
+    }).format(Math.round(Number.isFinite(value) ? value : 0));
+
+  function safeNumber(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }
+
+  function addIncomeRow(name = "", amount = "") {
+    const row = document.createElement("div");
+    row.className = "income-row";
+
+    const nameWrap = document.createElement("div");
+    const nameLabel = document.createElement("label");
+    nameLabel.textContent = "Income source";
+    const nameInput = document.createElement("input");
+    nameInput.placeholder = "e.g. OC cash, Xanax sales, weapon sales";
+    nameInput.value = name;
+    nameWrap.append(nameLabel, nameInput);
+
+    const amountWrap = document.createElement("div");
+    const amountLabel = document.createElement("label");
+    amountLabel.textContent = "Amount";
+    const amountInput = document.createElement("input");
+    amountInput.type = "number";
+    amountInput.min = "0";
+    amountInput.step = "1";
+    amountInput.placeholder = "0";
+    amountInput.value = amount;
+    amountInput.className = "income-amount";
+    amountInput.addEventListener("input", calculate);
+    amountWrap.append(amountLabel, amountInput);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+      row.remove();
+      calculate();
+    });
+
+    row.append(nameWrap, amountWrap, remove);
+    incomeList.append(row);
+  }
+
+  function currentNames() {
+    return [1,2,3].map(i => {
+      const value = document.getElementById(`tierName${i}`).value.trim();
+      return value || `Payment ${i}`;
+    });
+  }
+
+  function currentPcts() {
+    return [1,2,3].map(i => safeNumber(document.getElementById(`tierPct${i}`).value));
+  }
+
+  function calculate() {
+    let total = 0;
+    document.querySelectorAll(".income-amount").forEach(input => {
+      total += safeNumber(input.value);
+    });
+
+    const names = currentNames();
+    const pcts = currentPcts();
+    const pctTotal = pcts.reduce((a,b) => a+b, 0);
+
+    document.getElementById("totalIncome").textContent = money(total);
+
+    names.forEach((name, i) => {
+      document.getElementById(`summaryLabel${i+1}`).textContent = name;
+      document.getElementById(`summaryValue${i+1}`).textContent =
+        money(total * pcts[i] / 100);
+    });
+
+    const status = document.getElementById("splitStatus");
+    status.className = "status";
+
+    if (Math.abs(pctTotal - 100) < 0.0001) {
+      status.textContent = "✓ Percentages total 100%.";
+      status.classList.add("good");
+    } else if (pctTotal < 100) {
+      const remainingPct = 100 - pctTotal;
+      const remainingValue = total * remainingPct / 100;
+      status.textContent =
+        `${pctTotal}% allocated. ${remainingPct.toFixed(2).replace(/\.00$/,"")}% ` +
+        `(${money(remainingValue)}) remains unallocated / retained.`;
+      status.classList.add("warn");
+    } else {
+      status.textContent =
+        `Percentages total ${pctTotal}%. Reduce the split by ` +
+        `${(pctTotal - 100).toFixed(2).replace(/\.00$/,"")}%.`;
+      status.classList.add("bad");
+    }
+
+    const tbody = document.getElementById("breakdown");
+    tbody.replaceChildren();
+
+    pcts.forEach((pct, i) => {
+      const tr = document.createElement("tr");
+      const tdName = document.createElement("td");
+      const tdPct = document.createElement("td");
+      const tdValue = document.createElement("td");
+
+      tdName.textContent = names[i];
+      tdPct.textContent = `${pct}%`;
+      tdValue.textContent = money(total * pct / 100);
+      tdValue.className = "money";
+
+      tr.append(tdName, tdPct, tdValue);
+      tbody.append(tr);
+    });
+
+    if (pctTotal < 100) {
+      const remainingPct = 100 - pctTotal;
+      const tr = document.createElement("tr");
+      const tdName = document.createElement("td");
+      const tdPct = document.createElement("td");
+      const tdValue = document.createElement("td");
+
+      tdName.textContent = "Unallocated / retained";
+      tdPct.textContent = `${remainingPct.toFixed(2).replace(/\.00$/,"")}%`;
+      tdValue.textContent = money(total * remainingPct / 100);
+      tdValue.className = "money";
+
+      tr.append(tdName, tdPct, tdValue);
+      tbody.append(tr);
+    }
+  }
+
+  function saveDefaults() {
+    const data = {
+      names: currentNames(),
+      pcts: [1,2,3].map(i => document.getElementById(`tierPct${i}`).value)
+    };
+    localStorage.setItem(DEFAULTS_KEY, JSON.stringify(data));
+    savedNotice.textContent = "✓ Current tier labels and percentages saved as your defaults.";
+  }
+
+  function loadDefaults() {
+    const raw = localStorage.getItem(DEFAULTS_KEY);
+    if (!raw) return;
+
+    try {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.names) && data.names.length === 3) {
+        data.names.forEach((name, i) => {
+          document.getElementById(`tierName${i+1}`).value = name;
+        });
+      }
+      if (Array.isArray(data.pcts) && data.pcts.length === 3) {
+        data.pcts.forEach((pct, i) => {
+          document.getElementById(`tierPct${i+1}`).value = pct;
+        });
+      }
+    } catch (_) {}
+  }
+
+  function resetAll() {
+    incomeList.replaceChildren();
+    addIncomeRow("OC income", "");
+    addIncomeRow("Item sales", "");
+
+    document.getElementById("tierName1").value = "Tier 1 & 2";
+    document.getElementById("tierName2").value = "Tier 3 & 4";
+    document.getElementById("tierName3").value = "Tier 5 & 6";
+    document.getElementById("tierPct1").value = "";
+    document.getElementById("tierPct2").value = "";
+    document.getElementById("tierPct3").value = "";
+    savedNotice.textContent = "";
+    calculate();
+  }
+
+  async function copySummary() {
+    let total = 0;
+    document.querySelectorAll(".income-amount").forEach(input => {
+      total += safeNumber(input.value);
+    });
+
+    const names = currentNames();
+    const pcts = currentPcts();
+
+    const lines = [
+      "OC PAYOUT SUMMARY",
+      `Total income: ${money(total)}`,
+      "",
+      ...names.map((name, i) =>
+        `${name}: ${pcts[i]}% — ${money(total * pcts[i] / 100)}`
+      )
+    ];
+
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      savedNotice.textContent = "✓ Payout summary copied.";
+    } catch (_) {
+      savedNotice.textContent = "Could not copy automatically. Your browser may block clipboard access.";
+    }
+  }
+
+  document.getElementById("addIncome").addEventListener("click", () => {
+    addIncomeRow();
+    calculate();
+  });
+
+  document.getElementById("saveDefaults").addEventListener("click", saveDefaults);
+  document.getElementById("resetAll").addEventListener("click", resetAll);
+  document.getElementById("copySummary").addEventListener("click", copySummary);
+
+  [1,2,3].forEach(i => {
+    document.getElementById(`tierName${i}`).addEventListener("input", calculate);
+    document.getElementById(`tierPct${i}`).addEventListener("input", calculate);
+  });
+
+  addIncomeRow("OC income", "");
+  addIncomeRow("Item sales", "");
+  loadDefaults();
+  calculate();
+})();
+</script>
+</body>
+</html>
